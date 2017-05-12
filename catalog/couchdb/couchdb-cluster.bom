@@ -23,7 +23,6 @@ brooklyn.catalog:
   license: Apache-2.0
   publish:
     license_code: Apache-2.0
-    reference: reference.json
   defaults:
     couchIconUrl: &couchIconUrl https://svn.apache.org/repos/asf/couchdb/supplement/logo/couchdb-logo.png
   iconUrl: *couchIconUrl
@@ -110,6 +109,8 @@ brooklyn.catalog:
 
   - id: couchdb-cluster
     name: "CouchDB Cluster"
+    version: 0.11.0-SNAPSHOT
+    description: A CouchDB cluster blueprint
     itemType: template
     iconUrl: *couchIconUrl
     item:

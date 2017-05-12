@@ -1,0 +1,53 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+brooklyn.catalog:
+  items:
+  - "https://github.com/brooklyncentral/common-catalog-utils/releases/download/v0.1.0/common.tests.bom"
+  - id: couchdb-cluster-tests
+    version: 0.11.0-SNAPSHOT
+    itemType: template
+    iconUrl: https://svn.apache.org/repos/asf/couchdb/supplement/logo/couchdb-logo.png
+    name: CouchDB Cluster tests
+    description: Tests that CouchDB Cluster starts and works effectively
+    license_code: Apache-2.0
+    license_url: http://www.apache.org/licenses/LICENSE-2.0.txt
+    item:
+      services:
+      - type: couchdb-cluster
+        id: couchdb-cluster
+      - type: test-case
+        name: CouchDB Cluster Tests
+        brooklyn.config:
+          targetId: couchdb-cluster
+          timeout: 1h
+        brooklyn.children:
+        - type: test-case
+          name: "1. Effector Restart, Stop & Restart Tests"
+          brooklyn.children:  
+          - type: assert-up-and-running-initial
+            name: "1.1 Node up and running"
+          - type: assert-restart-process
+            name: "1.2 restart process"
+            brooklyn.config:
+              process.grep.name: "[c]ouchdb"
+          - type: assert-stop-and-restart-process
+            name: "1.3 stop and restart process"
+            brooklyn.config:
+              process.grep.name: "[c]ouchdb"
+              

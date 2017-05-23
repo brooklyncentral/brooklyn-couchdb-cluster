@@ -35,12 +35,22 @@ brooklyn.catalog:
       services:
       - type: org.apache.brooklyn.entity.nosql.couchdb.CouchDBNode
         brooklyn.config:
+          provisioning.properties:
+            customizer:
+              $brooklyn:object:
+                type: org.apache.brooklyn.location.jclouds.networking.SharedLocationSecurityGroupCustomizer
+                object.fields:
+                  enabled: $brooklyn:config("couchdb.sharedsecuritygroup.create")
+                  tcpPortRanges:
+                    - "1024-65535"
           shell.env:
-            EXPANDED_INSTALL_DIR: $brooklyn:attributeWhenReady("expandedinstall.dir")
             USERNAME: $brooklyn:config("couchdb.username")
             PASSWORD: $brooklyn:config("couchdb.password")
             PORT_OBJ: $brooklyn:config("http.port")
             HOST: $brooklyn:attributeWhenReady("host.subnet.address")
+            INSTALL_DIR: $brooklyn:attributeWhenReady("install.dir")
+            EXPANDED_INSTALL_DIR: $brooklyn:attributeWhenReady("expandedinstall.dir")
+            RUN_DIR: $brooklyn:attributeWhenReady("run.dir")
           install.version: 2.0.0
           post.customize.command: |
 
@@ -53,13 +63,17 @@ brooklyn.catalog:
             PORT=$(echo ${PORT_OBJ} | sed 's/.*\"port\":\([0-9]*\).*/\1/')
             COUCH=http://localhost:${PORT}
 
+            curl -X PUT $COUCH/_users
+            curl -X PUT $COUCH/_replicator
+            curl -X PUT $COUCH/_global_changes
+
             # create an admin user
             curl -X PUT $COUCH/_node/couchdb@${HOST}/_config/admins/${USERNAME} -d "\"${PASSWORD}\""
             curl -X PUT --user ${USERNAME}:${PASSWORD} $COUCH/_node/couchdb@${HOST}/_config/chttpd/bind_address -d '"0.0.0.0"'
 
             # stop the database service again
             kill $PID
-
+            
   - id: couch-coordination-node
     name: "CouchDB coordination node"
     itemType: entity
@@ -83,10 +97,10 @@ brooklyn.catalog:
             sleep 60
             PORT=$(echo ${PORT_OBJ} | sed 's/.*\"port\":\([0-9]*\).*/\1/')
             COUCH=http://localhost:${PORT}
-
+            
             # enable cluster mode
             curl -X POST --user ${USERNAME}:${PASSWORD} -H "Content-Type: application/json" $COUCH/_cluster_setup -d "{\"action\": \"enable_cluster\", \"bind_address\":\"0.0.0.0\", \"username\": \"${USERNAME}\", \"password\":\"${PASSWORD}\"}"
-
+            
             if [ -n "${HOSTNAMES}" ]; then
               # if this is the coordination-node
               IFS=',' read -r -a hostnamearray <<< "${HOSTNAMES}"
@@ -127,6 +141,11 @@ brooklyn.catalog:
         label: CouchDB Password
         description: The number of nodes to start with
         default: 3
+      - name: couchdb.sharedsecuritygroup.create
+        label: CouchDB shared security group customizer
+        description: Enable a shared security group customizer
+        type: boolean
+        default: true
       services:
       - type: org.apache.brooklyn.entity.group.DynamicCluster
         name: "Cluster"

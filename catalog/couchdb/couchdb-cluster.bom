@@ -34,15 +34,16 @@ brooklyn.catalog:
     item:
       services:
       - type: org.apache.brooklyn.entity.nosql.couchdb.CouchDBNode
+        id: couchdb-cluster-node
+        provisioning.properties:
+          inboundPorts:
+          - 22
+          - 5986
+          - 5984
+          - 4369
+          - 8080
+          - 9100-9200
         brooklyn.config:
-          provisioning.properties:
-            customizer:
-              $brooklyn:object:
-                type: org.apache.brooklyn.location.jclouds.networking.SharedLocationSecurityGroupCustomizer
-                object.fields:
-                  enabled: $brooklyn:config("couchdb.sharedsecuritygroup.create")
-                  tcpPortRanges:
-                    - "1024-65535"
           shell.env:
             USERNAME: $brooklyn:config("couchdb.username")
             PASSWORD: $brooklyn:config("couchdb.password")
@@ -57,7 +58,14 @@ brooklyn.catalog:
             # replace the node name in the settings
             sudo sed -i "s/couchdb@localhost/couchdb@${HOST}/g" ${EXPANDED_INSTALL_DIR}/rel/couchdb/etc/vm.args
 
-            ~/brooklyn-managed-processes/installs/CouchDBNode_2.0.0/apache-couchdb-2.0.0/rel/couchdb/bin/couchdb > temp.out 2>&1 &
+            sudo tee -a ${EXPANDED_INSTALL_DIR}/rel/couchdb/etc/vm.args <<-EOF            
+            
+            # Set the port range for communication
+            -kernel inet_dist_listen_min 9100
+            -kernel inet_dist_listen_max 9200
+            EOF
+            
+            ${EXPANDED_INSTALL_DIR}/rel/couchdb/bin/couchdb > temp.out 2>&1 &
             PID=$!
             sleep 5
             PORT=$(echo ${PORT_OBJ} | sed 's/.*\"port\":\([0-9]*\).*/\1/')
@@ -148,6 +156,7 @@ brooklyn.catalog:
         default: true
       services:
       - type: org.apache.brooklyn.entity.group.DynamicCluster
+        id: couchdb-cluster
         name: "Cluster"
         brooklyn.config:
           cluster.initial.size: $brooklyn:config("couchdb.nodes")

@@ -52,14 +52,21 @@ brooklyn.catalog:
             INSTALL_DIR: $brooklyn:attributeWhenReady("install.dir")
             EXPANDED_INSTALL_DIR: $brooklyn:attributeWhenReady("expandedinstall.dir")
             RUN_DIR: $brooklyn:attributeWhenReady("run.dir")
+            COOKIE: $brooklyn:config("couchdb.cookie")
+            COOKIE_DEFAULT: $brooklyn:config("couchdb.cookie.default")
           install.version: 2.0.0
           post.customize.command: |
-
+            # check there's a cookie specified
+            if [ -z ${COOKIE} ]; then 
+              COOKIE=${COOKIE_DEFAULT}
+            fi
+            
             # replace the node name in the settings
             sudo sed -i "s/couchdb@localhost/couchdb@${HOST}/g" ${EXPANDED_INSTALL_DIR}/rel/couchdb/etc/vm.args
+            # Set the security coookie
+            sudo sed -i "s/-setcookie.*/-setcookie ${COOKIE}/" ${EXPANDED_INSTALL_DIR}/rel/couchdb/etc/vm.args
 
-            sudo tee -a ${EXPANDED_INSTALL_DIR}/rel/couchdb/etc/vm.args <<-EOF            
-            
+            sudo tee -a ${EXPANDED_INSTALL_DIR}/rel/couchdb/etc/vm.args <<-EOF
             # Set the port range for communication
             -kernel inet_dist_listen_min 9100
             -kernel inet_dist_listen_max 9200
@@ -149,16 +156,16 @@ brooklyn.catalog:
         label: CouchDB Password
         description: The number of nodes to start with
         default: 3
-      - name: couchdb.sharedsecuritygroup.create
-        label: CouchDB shared security group customizer
-        description: Enable a shared security group customizer
-        type: boolean
-        default: true
+      - name: couchdb.cookie
+        label: CouchDB secret cookie
+        description: The secret cookie used for erlang node communication
+        type: string
       services:
       - type: org.apache.brooklyn.entity.group.DynamicCluster
         id: couchdb-cluster
         name: "Cluster"
         brooklyn.config:
+          couchdb.cookie.default: $brooklyn:root().attributeWhenReady("entity.id")
           cluster.initial.size: $brooklyn:config("couchdb.nodes")
           dynamiccluster.firstmemberspec:
             $brooklyn:entitySpec:

@@ -7,10 +7,12 @@
     <groupId>io.brooklyn.couchdb-cluster</groupId>
     <artifactId>brooklyn-couchdb-cluster</artifactId>
     <version>1.0.0-SNAPSHOT</version><!--BROOKLYN_COUCHDB_CLUSTER_VERSION-->
+    <packaging>bundle</packaging>
 
     <properties>
         <build-helper-maven-plugin.version>3.0.0</build-helper-maven-plugin.version>
-        <maven-bundle-plugin.version>3.2.0</maven-bundle-plugin.version>
+        <buildnumber-maven-plugin.version>1.4</buildnumber-maven-plugin.version>
+        <maven-bundle-plugin.version>3.3.0</maven-bundle-plugin.version>
     </properties>
 
     <scm>
@@ -45,6 +47,11 @@
             <plugins>
                 <plugin>
                     <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>buildnumber-maven-plugin</artifactId>
+                    <version>${buildnumber-maven-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
                     <artifactId>build-helper-maven-plugin</artifactId>
                     <version>${build-helper-maven-plugin.version}</version>
                 </plugin>
@@ -56,6 +63,18 @@
             </plugins>
         </pluginManagement>
         <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>buildnumber-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>create</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.apache.felix</groupId>
                 <artifactId>maven-bundle-plugin</artifactId>
@@ -69,6 +88,11 @@
                         </goals>
                     </execution>
                 </executions>
+                <configuration>
+                    <instructions>
+                        <Build-Commit-Id>${buildNumber}</Build-Commit-Id>
+                    </instructions>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>

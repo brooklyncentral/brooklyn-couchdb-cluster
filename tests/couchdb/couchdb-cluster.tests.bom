@@ -20,7 +20,7 @@ brooklyn.catalog:
   items:
   - "https://github.com/brooklyncentral/common-catalog-utils/releases/download/v0.1.0/common.tests.bom"
   - id: couchdb-cluster-tests
-    version: 0.11.0-SNAPSHOT # BROOKLYN_COUCHDB_CLUSTER_VERSION
+    version: 1.0.1-SNAPSHOT # BROOKLYN_COUCHDB_CLUSTER_VERSION
     itemType: template
     iconUrl: https://svn.apache.org/repos/asf/couchdb/supplement/logo/couchdb-logo.png
     name: CouchDB Cluster tests

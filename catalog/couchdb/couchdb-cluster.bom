@@ -95,7 +95,7 @@ brooklyn.catalog:
     iconUrl: *couchIconUrl
     item:
       services:
-      - type: child-software-process
+      - type: org.apache.brooklyn.entity.software.base.VanillaSoftwareProcess
         id: couch-coordination-node
         name: "CouchDB coordination node"
         brooklyn.config:

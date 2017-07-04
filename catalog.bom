@@ -18,4 +18,33 @@
 #
 brooklyn.catalog:
   items:
-    - https://raw.githubusercontent.com/brooklyncentral/brooklyn-couchdb-cluster/master/catalog/couchdb/couchdb-cluster.bom
+  - https://raw.githubusercontent.com/brooklyncentral/brooklyn-couchdb-cluster/master/catalog/couchdb/couchdb-cluster.bom
+  - id: couchdb-cluster-template
+    name: "CouchDB Cluster"
+    version: 1.0.1-SNAPSHOT # BROOKLYN_COUCHDB_CLUSTER_VERSION
+    description: A CouchDB cluster blueprint
+    itemType: template
+    iconUrl: https://twitter.com/couchdb/profile_image?size=original
+    item:
+      services:
+      - type: org.apache.brooklyn.entity.stock.BasicApplication
+        name: CouchDB Cluster
+        brooklyn.parameters:
+        - name: couchdb.username
+          label: CouchDB Admin User
+          description: The default CouchDB admin user
+          default: admin
+        - name: couchdb.password
+          label: CouchDB Password
+          description: The default CouchDB admin password
+          default: password
+        - name: couchdb.nodes
+          label: CouchDB Password
+          description: The number of nodes to start with
+          default: 3
+        - name: couchdb.cookie
+          label: CouchDB secret cookie
+          description: The secret cookie used for erlang node communication
+          type: string
+        brooklyn.children:
+        - type: couchdb-cluster

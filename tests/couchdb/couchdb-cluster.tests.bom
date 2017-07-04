@@ -67,4 +67,3 @@ brooklyn.catalog:
                 - "http://admin:password@%s:%s/test-database"
                 - $brooklyn:component("couchdb-cluster-node").attributeWhenReady("host.address")
                 - $brooklyn:component("couchdb-cluster-node").attributeWhenReady("http.port")
-              

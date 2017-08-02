@@ -161,7 +161,6 @@ brooklyn.catalog:
 
   - id: couchdb-cluster
     name: "CouchDB Cluster"
-    version: 1.0.2-SNAPSHOT # BROOKLYN_COUCHDB_CLUSTER_VERSION
     description: A CouchDB cluster blueprint
     itemType: entity
     iconUrl: *couchIconUrl

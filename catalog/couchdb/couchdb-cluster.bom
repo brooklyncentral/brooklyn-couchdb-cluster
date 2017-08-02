@@ -87,7 +87,32 @@ brooklyn.catalog:
 
           # stop the database service again
           kill $PID
-            
+
+      brooklyn.enrichers:
+      - type: org.apache.brooklyn.enricher.stock.Transformer
+        brooklyn.config:
+          enricher.triggerSensors:
+          - $brooklyn:sensor("host.subnet.address")
+          - $brooklyn:sensor("http.port")
+          enricher.targetSensor: $brooklyn:sensor("datastore.url")
+          enricher.targetValue:
+            $brooklyn:formatString:
+            - "http://%s:%s"
+            - $brooklyn:attributeWhenReady("host.subnet.address")
+            - $brooklyn:attributeWhenReady("http.port")
+      - type: org.apache.brooklyn.enricher.stock.Transformer
+        brooklyn.config:
+          enricher.triggerSensors:
+          - $brooklyn:sensor("host.address")
+          - $brooklyn:sensor("http.port")
+          enricher.targetSensor: $brooklyn:sensor("datastore.url.public")
+          enricher.targetValue:
+            $brooklyn:formatString:
+            - "http://%s:%s"
+            - $brooklyn:attributeWhenReady("host.address")
+            - $brooklyn:attributeWhenReady("http.port")
+
+
   - id: couch-coordination-node
     name: "CouchDB coordination node"
     itemType: entity
@@ -171,59 +196,10 @@ brooklyn.catalog:
               children.startable.mode: BACKGROUND
             brooklyn.children:
               - type: couch-coordination-node
-            brooklyn.enrichers:
-            - type: org.apache.brooklyn.enricher.stock.Transformer
-              brooklyn.config:
-                enricher.triggerSensors:
-                - $brooklyn:sensor("host.subnet.address")
-                - $brooklyn:sensor("http.port")
-                enricher.targetSensor: $brooklyn:sensor("datastore.url")
-                enricher.targetValue:
-                  $brooklyn:formatString:
-                  - "http://%s:%s"
-                  - $brooklyn:attributeWhenReady("host.subnet.address")
-                  - $brooklyn:attributeWhenReady("http.port")
-                  - type: org.apache.brooklyn.enricher.stock.Transformer
-            - type: org.apache.brooklyn.enricher.stock.Transformer
-              brooklyn.config:
-                enricher.triggerSensors:
-                - $brooklyn:sensor("host.address")
-                - $brooklyn:sensor("http.port")
-                enricher.targetSensor: $brooklyn:sensor("datastore.url.public")
-                enricher.targetValue:
-                  $brooklyn:formatString:
-                  - "http://%s:%s"
-                  - $brooklyn:attributeWhenReady("host.address")
-                  - $brooklyn:attributeWhenReady("http.port")
-                  - type: org.apache.brooklyn.enricher.stock.Transformer
 
         dynamiccluster.memberspec:
           $brooklyn:entitySpec:
             type: couchdb-cluster-node
-            brooklyn.enrichers:
-            - type: org.apache.brooklyn.enricher.stock.Transformer
-              brooklyn.config:
-                enricher.triggerSensors:
-                - $brooklyn:sensor("host.subnet.address")
-                - $brooklyn:sensor("http.port")
-                enricher.targetSensor: $brooklyn:sensor("datastore.url")
-                enricher.targetValue:
-                  $brooklyn:formatString:
-                  - "http://%s:%s"
-                  - $brooklyn:attributeWhenReady("host.subnet.address")
-                  - $brooklyn:attributeWhenReady("http.port")
-            - type: org.apache.brooklyn.enricher.stock.Transformer
-              brooklyn.config:
-                enricher.triggerSensors:
-                - $brooklyn:sensor("host.address")
-                - $brooklyn:sensor("http.port")
-                enricher.targetSensor: $brooklyn:sensor("datastore.url.public")
-                enricher.targetValue:
-                  $brooklyn:formatString:
-                  - "http://%s:%s"
-                  - $brooklyn:attributeWhenReady("host.address")
-                  - $brooklyn:attributeWhenReady("http.port")
-                  - type: org.apache.brooklyn.enricher.stock.Transformer
 
       brooklyn.enrichers:
         - type: org.apache.brooklyn.enricher.stock.Aggregator

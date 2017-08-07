@@ -87,48 +87,138 @@ brooklyn.catalog:
 
           # stop the database service again
           kill $PID
+
+      brooklyn.initializers:
+      - type: org.apache.brooklyn.core.sensor.http.HttpRequestSensor
+        brooklyn.config:
+          name: cluster.membership
+          period: 5s
+          username: $brooklyn:config("couchdb.username")
+          password: $brooklyn:config("couchdb.password")
+          preemptiveBasicAuth: true
+          jsonPath: 
+          uri:
+            $brooklyn:formatString:
+            - "%s/_membership"
+            - $brooklyn:attributeWhenReady("datastore.url.public")
+
+      brooklyn.enrichers:
+      - type: org.apache.brooklyn.enricher.stock.Transformer
+        brooklyn.config:
+          enricher.triggerSensors:
+          - "host.subnet.address"
+          - "http.port"
+          enricher.targetSensor: "datastore.url"
+          enricher.targetValue:
+            $brooklyn:formatString:
+            - "http://%s:%s"
+            - $brooklyn:attributeWhenReady("host.subnet.address")
+            - $brooklyn:attributeWhenReady("http.port")
+      
+      - type: org.apache.brooklyn.enricher.stock.Transformer
+        brooklyn.config:
+          enricher.triggerSensors:
+          - "host.address"
+          - "http.port"
+          enricher.targetSensor: "datastore.url.public"
+          enricher.targetValue:
+            $brooklyn:formatString:
+            - "http://%s:%s"
+            - $brooklyn:attributeWhenReady("host.address")
+            - $brooklyn:attributeWhenReady("http.port")
             
-  - id: couch-coordination-node
-    name: "CouchDB coordination node"
+      - type: org.apache.brooklyn.enricher.stock.Transformer
+        brooklyn.config:
+          enricher.sourceSensor: "cluster.membership"
+          enricher.targetSensor: "cluster.membership.size"
+          enricher.transformation:
+            $brooklyn:object:
+              type: "com.google.guava:com.google.common.base.Functions"
+              factoryMethod.name: "compose"
+              factoryMethod.args:
+                - $brooklyn:object:
+                    type: "org.apache.brooklyn.feed.http.JsonFunctions"
+                    factoryMethod.name: "getPath"
+                    factoryMethod.args:
+                      - "$.cluster_nodes.size()"
+                - $brooklyn:object:
+                    type: "org.apache.brooklyn.feed.http.JsonFunctions"
+                    factoryMethod.name: "asJson"
+
+  - id: couchdb-setup-coordination-node
+    name: "CouchDB setup coordination node"
     itemType: entity
     iconUrl: *couchIconUrl
     item:
       type: org.apache.brooklyn.entity.software.base.VanillaSoftwareProcess
-      id: couch-coordination-node
-      name: "CouchDB coordination node"
+      name: "CouchDB setup coordination node"
       brooklyn.config:
         download.url:
-        install.latch: $brooklyn:parent().parent().attributeWhenReady("service.isUp")
+        install.latch: $brooklyn:parent().parent().attributeWhenReady("service.allNodesUp")
         shell.env:
           HOSTNAMES: $brooklyn:parent().parent().attributeWhenReady("cluster.hostnames")
           HOST: $brooklyn:parent().attributeWhenReady("host.subnet.address")
           USERNAME: $brooklyn:config("couchdb.username")
           PASSWORD: $brooklyn:config("couchdb.password")
-          PORT_OBJ: $brooklyn:config("http.port")
+          PORT: $brooklyn:parent().attributeWhenReady("http.port")
 
+        # See http://docs.couchdb.org/en/latest/cluster/setup.html#the-cluster-setup-api
+        # for the setup instructions.
+        #
+        # Before executing, we wait for all nodes to be up, before running this (otherewise add_node will fail).
+        # We do this by:
+        #  - latching on the cluster's `service.allNodesUp`, which requires all nodes to have service.isUp.
+        #  - using BACKGROUND_LATE, so we don't try to execute until after this node's `launch` has completed.
+        #
+        # The cluster will wait for `couchdb-setup-coordination-node` to finish executing, before 
+        # it sets `service.isUp=true`. It does this by:
+        #  - Setting `setup-coordination` in the cluster's not-up-indicators, based on the
+        #    couchdb-setup-coordination-node's `service.isUp`.
+        #  - Configuring the cluster's `start.timeout` so that it waits a few minutes after
+        #    all the children have returned, to give the setup-coordination a chance to complete.
+        #
+        # That differs from the steps below in a few ways (the first one seems important!):
+        #  1. should call `enable_cluster` on each node, not just the first one.
+        #  2. should pass in  `"node_count":"3"` for the action `enable_cluster` on each node.
+        #  3. sould include  `"node_count":"3"` in subsequent `enable_cluster` on setup-coordination-node
         install.command: |
-          sleep 60
-          PORT=$(echo ${PORT_OBJ} | sed 's/.*\"port\":\([0-9]*\).*/\1/')
-          COUCH=http://localhost:${PORT}
+          
+          set -x
 
-          # enable cluster mode
-          curl -X POST --user ${USERNAME}:${PASSWORD} -H "Content-Type: application/json" $COUCH/_cluster_setup -d "{\"action\": \"enable_cluster\", \"bind_address\":\"0.0.0.0\", \"username\": \"${USERNAME}\", \"password\":\"${PASSWORD}\"}"
+          LOCAL_COUCHDB_URL=http://localhost:${PORT}
 
           if [ -n "${HOSTNAMES}" ]; then
-            # if this is the coordination-node
             IFS=',' read -r -a hostnamearray <<< "${HOSTNAMES}"
-            for i in "${hostnamearray[@]}"
-            do
-              if [ $i != ${HOST} ]; then
-                echo "Adding $i to the cluster"
-                curl -X POST --user ${USERNAME}:${PASSWORD} -H "Content-Type: application/json" $COUCH/_cluster_setup -d "{\"action\": \"enable_cluster\", \"bind_address\":\"0.0.0.0\", \"username\": \"${USERNAME}\", \"password\":\"${PASSWORD}\", \"port\": ${PORT}, \"remote_node\": \"$i\", \"remote_current_user\": \"${USERNAME}\", \"remote_current_password\": \"${PASSWORD}\" }"
-                curl -X POST --user ${USERNAME}:${PASSWORD} -H "Content-Type: application/json" $COUCH/_cluster_setup -d "{\"action\": \"add_node\", \"host\":\"$i\", \"port\": \"${PORT}\", \"username\": \"${USERNAME}\", \"password\":\"${PASSWORD}\"}"
+            NODE_COUNT=(${#hostnamearray[@]})
+
+            echo "Setting up cluster for hosts ${HOSTNAMES}, node count ${NODE_COUNT}"
+              
+            for i in "${hostnamearray[@]}"; do
+              COUCHDB_URL=http://${i}:${PORT}
+              
+              echo "Enabling cluster-mode on ${COUCHDB_URL}"
+              curl -X POST --user ${USERNAME}:${PASSWORD} -H "Content-Type: application/json" ${COUCHDB_URL}/_cluster_setup \
+                      -d "{\"action\": \"enable_cluster\", \"bind_address\":\"0.0.0.0\", \"username\": \"${USERNAME}\", \"password\":\"${PASSWORD}\", \"node_count\":\"${NODE_COUNT}\"}"
+            done
+
+            for i in "${hostnamearray[@]}"; do
+              if [ "${i}" != "${HOST}" ]; then
+                echo "Adding ${i} to the cluster (via local node ${LOCAL_COUCHDB_URL})"
+                curl -X POST --user ${USERNAME}:${PASSWORD} -H "Content-Type: application/json" ${LOCAL_COUCHDB_URL}/_cluster_setup \
+                        -d "{\"action\": \"enable_cluster\", \"bind_address\":\"0.0.0.0\", \"username\": \"${USERNAME}\", \"password\":\"${PASSWORD}\", \"port\": ${PORT}, \"remote_node\": \"$i\", \"remote_current_user\": \"${USERNAME}\", \"remote_current_password\": \"${PASSWORD}\", \"node_count\":\"${NODE_COUNT}\"}"
+                curl -X POST --user ${USERNAME}:${PASSWORD} -H "Content-Type: application/json" ${LOCAL_COUCHDB_URL}/_cluster_setup \
+                        -d "{\"action\": \"add_node\", \"host\":\"$i\", \"port\": \"${PORT}\", \"username\": \"${USERNAME}\", \"password\":\"${PASSWORD}\"}"
               fi
             done
 
-            # finish the cluster setup
-            curl -X POST --user ${USERNAME}:${PASSWORD} -H "Content-Type: application/json" $COUCH/_cluster_setup -d "{\"action\": \"finish_cluster\"}"
+            echo "Finishing cluster setup (via local node ${LOCAL_COUCHDB_URL})"
+            curl -X POST --user ${USERNAME}:${PASSWORD} -H "Content-Type: application/json" ${LOCAL_COUCHDB_URL}/_cluster_setup -d "{\"action\": \"finish_cluster\"}"
+          
+          else
+            echo "No hostnames available for cluster!"
+            exit 1
           fi
+
         launch.command: |
           echo true
         checkRunning.command: |
@@ -136,11 +226,14 @@ brooklyn.catalog:
 
   - id: couchdb-cluster
     name: "CouchDB Cluster"
-    version: 1.0.2-SNAPSHOT # BROOKLYN_COUCHDB_CLUSTER_VERSION
     description: A CouchDB cluster blueprint
     itemType: entity
     iconUrl: *couchIconUrl
     item:
+      type: org.apache.brooklyn.entity.group.DynamicCluster
+      id: couchdb-cluster
+      name: "Cluster"
+      
       brooklyn.parameters:
       - name: couchdb.username
         label: CouchDB Admin User
@@ -158,106 +251,102 @@ brooklyn.catalog:
         label: CouchDB secret cookie
         description: The secret cookie used for erlang node communication
         type: string
-      type: org.apache.brooklyn.entity.group.DynamicCluster
-      id: couchdb-cluster
-      name: "Cluster"
+
       brooklyn.config:
+        # Wait for max 5 minutes for setup-controller to finish its work (see "setup-coordination" 
+        # in service-no-up-indicators)
+        start.timeout: 5m
+        
         couchdb.cookie.default: $brooklyn:root().attributeWhenReady("entity.id")
         cluster.initial.size: $brooklyn:config("couchdb.nodes")
         dynamiccluster.firstmemberspec:
           $brooklyn:entitySpec:
             type: couchdb-cluster-node
             brooklyn.config:
-              children.startable.mode: BACKGROUND
-            brooklyn.children:
-              - type: couch-coordination-node
+              children.startable.mode: BACKGROUND_LATE
             brooklyn.enrichers:
-            - type: org.apache.brooklyn.enricher.stock.Transformer
-              brooklyn.config:
-                enricher.triggerSensors:
-                - $brooklyn:sensor("host.subnet.address")
-                - $brooklyn:sensor("http.port")
-                enricher.targetSensor: $brooklyn:sensor("datastore.url")
-                enricher.targetValue:
-                  $brooklyn:formatString:
-                  - "http://%s:%s"
-                  - $brooklyn:attributeWhenReady("host.subnet.address")
-                  - $brooklyn:attributeWhenReady("http.port")
-                  - type: org.apache.brooklyn.enricher.stock.Transformer
-            - type: org.apache.brooklyn.enricher.stock.Transformer
-              brooklyn.config:
-                enricher.triggerSensors:
-                - $brooklyn:sensor("host.address")
-                - $brooklyn:sensor("http.port")
-                enricher.targetSensor: $brooklyn:sensor("datastore.url.public")
-                enricher.targetValue:
-                  $brooklyn:formatString:
-                  - "http://%s:%s"
-                  - $brooklyn:attributeWhenReady("host.address")
-                  - $brooklyn:attributeWhenReady("http.port")
-                  - type: org.apache.brooklyn.enricher.stock.Transformer
+              - type: org.apache.brooklyn.enricher.stock.Propagator
+                brooklyn.config:
+                  uniqueTag: setup-coordination-complete
+                  producer: $brooklyn:entity("couchdb-setup-coordination-node")
+                  sensorMapping:
+                    service.isUp: setup-coordination
+            brooklyn.children:
+              - type: couchdb-setup-coordination-node
+                id: couchdb-setup-coordination-node
 
         dynamiccluster.memberspec:
           $brooklyn:entitySpec:
             type: couchdb-cluster-node
-            brooklyn.enrichers:
-            - type: org.apache.brooklyn.enricher.stock.Transformer
-              brooklyn.config:
-                enricher.triggerSensors:
-                - $brooklyn:sensor("host.subnet.address")
-                - $brooklyn:sensor("http.port")
-                enricher.targetSensor: $brooklyn:sensor("datastore.url")
-                enricher.targetValue:
-                  $brooklyn:formatString:
-                  - "http://%s:%s"
-                  - $brooklyn:attributeWhenReady("host.subnet.address")
-                  - $brooklyn:attributeWhenReady("http.port")
-            - type: org.apache.brooklyn.enricher.stock.Transformer
-              brooklyn.config:
-                enricher.triggerSensors:
-                - $brooklyn:sensor("host.address")
-                - $brooklyn:sensor("http.port")
-                enricher.targetSensor: $brooklyn:sensor("datastore.url.public")
-                enricher.targetValue:
-                  $brooklyn:formatString:
-                  - "http://%s:%s"
-                  - $brooklyn:attributeWhenReady("host.address")
-                  - $brooklyn:attributeWhenReady("http.port")
-                  - type: org.apache.brooklyn.enricher.stock.Transformer
 
       brooklyn.enrichers:
         - type: org.apache.brooklyn.enricher.stock.Aggregator
           brooklyn.config:
             uniqueTag: cluster-hostname-aggregator
-            enricher.sourceSensor: $brooklyn:sensor("host.subnet.address")
-            enricher.targetSensor: $brooklyn:sensor("cluster.hostname.list")
+            enricher.sourceSensor: "host.subnet.address"
+            enricher.targetSensor: "cluster.hostname.list"
             enricher.aggregating.fromMembers: true
             enricher.aggregator.excludeBlank: true
         - type: org.apache.brooklyn.enricher.stock.Joiner
           brooklyn.config:
             uniqueTag: cluster-hostname-joiner
-            enricher.sourceSensor: $brooklyn:sensor("cluster.hostname.list")
-            enricher.targetSensor: $brooklyn:sensor("cluster.hostnames")
+            enricher.sourceSensor: "cluster.hostname.list"
+            enricher.targetSensor: "cluster.hostnames"
             enricher.joiner.quote: false
         - type: org.apache.brooklyn.enricher.stock.Aggregator
           brooklyn.config:
             enricher.aggregating.fromMembers: true
             enricher.transformation.untyped: list
-            enricher.sourceSensor: $brooklyn:sensor("datastore.url")
-            enricher.targetSensor: $brooklyn:sensor("members.urls")
+            enricher.sourceSensor: "datastore.url"
+            enricher.targetSensor: "members.urls"
         - type: org.apache.brooklyn.enricher.stock.Aggregator
           brooklyn.config:
             enricher.aggregating.fromMembers: true
             enricher.transformation.untyped: list
-            enricher.sourceSensor: $brooklyn:sensor("datastore.url.public")
-            enricher.targetSensor: $brooklyn:sensor("members.urls.public")
+            enricher.sourceSensor: "datastore.url.public"
+            enricher.targetSensor: "members.urls.public"
         - type: org.apache.brooklyn.enricher.stock.Transformer
           brooklyn.config:
             enricher.triggerSensors:
-            - $brooklyn:sensor("cluster.first.entity")
-            - $brooklyn:sensor("members.urls")
-            enricher.targetSensor: $brooklyn:sensor("datastore.url")
+            - "cluster.first.entity"
+            - "members.urls"
+            enricher.targetSensor: "datastore.url"
             enricher.targetValue: $brooklyn:entity($brooklyn:attributeWhenReady("cluster.first.entity")).attributeWhenReady("datastore.url")
+        - type: org.apache.brooklyn.enricher.stock.Aggregator
+          brooklyn.config:
+            enricher.aggregating.fromMembers: true
+            enricher.transformation.untyped: isQuorate
+            quorum.check.type: all
+            quorum.total.size: $brooklyn:config("cluster.initial.size")
+            enricher.sourceSensor: "service.isUp"
+            enricher.targetSensor: "service.allNodesUp"
+        - type: org.apache.brooklyn.enricher.stock.Aggregator
+          brooklyn.config:
+            enricher.aggregating.fromMembers: true
+            enricher.transformation.untyped: min
+            enricher.sourceSensor: "cluster.membership"
+            enricher.targetSensor: "cluster.minPartitionSize"
+        - type: org.apache.brooklyn.enricher.stock.Aggregator
+          brooklyn.config:
+            uniqueTag: setup-coordination-complete
+            enricher.sourceSensor: "setup-coordination"
+            enricher.targetSensor: "setup-coordination"
+            enricher.transformation.untyped: first
+            enricher.aggregating.fromChildren: true
+            enricher.aggregating.valueFilter: notNull
+        - type: org.apache.brooklyn.enricher.stock.UpdatingMap
+          brooklyn.config:
+            uniqueTag: coordination-node-service-not-up-indicator
+            enricher.sourceSensor: setup-coordination
+            enricher.targetSensor: service.notUp.indicators
+            enricher.updatingMap.keyInTargetSensor: setup-coordination
+            enricher.updatingMap.computing:
+              $brooklyn:object:
+                type: "com.google.guava:com.google.common.base.Functions"
+                factoryMethod.name: "forMap"
+                factoryMethod.args:
+                  - true: 
+                  - "setup-coordination-not-up"
 
       brooklyn.policies:
       - type: org.apache.brooklyn.policy.ha.ServiceReplacer

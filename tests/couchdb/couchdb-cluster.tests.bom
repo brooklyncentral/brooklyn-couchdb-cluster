@@ -40,13 +40,10 @@ brooklyn.catalog:
           targetId: couchdb-cluster
           timeout: 1h
         brooklyn.children:
-        - type: test-case
-          name: "1. Effector Restart, Stop & Restart Tests"
-          brooklyn.children:  
-          - type: assert-up-and-running-initial
-            name: "1.1 Node up and running"
+        - type: assert-up-and-running-initial
+          name: "1. Cluster up and running"
         - type: test-http-body
-          name: "1.2 Create record"
+          name: "2. Create record"
           brooklyn.config:
             url:
               $brooklyn:formatString:
@@ -57,7 +54,7 @@ brooklyn.catalog:
             assert:
             - contains: ok
         - type: loop-test-case
-          name: "1.2 Read record on all nodes"
+          name: "3. Read record on all nodes"
           target: $brooklyn:entity("couchdb-cluster")
           testSpec:
             $brooklyn:entitySpec:

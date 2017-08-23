@@ -333,7 +333,10 @@ brooklyn.catalog:
             enricher.targetSensor: "setup-coordination"
             enricher.transformation.untyped: first
             enricher.aggregating.fromChildren: true
-            enricher.aggregating.valueFilter: notNull
+            enricher.aggregating.valueFilter:
+              $brooklyn:object:
+                type: "com.google.guava:com.google.common.base.Predicates"
+                factoryMethod.name: "notNull"
         - type: org.apache.brooklyn.enricher.stock.UpdatingMap
           brooklyn.config:
             uniqueTag: coordination-node-service-not-up-indicator

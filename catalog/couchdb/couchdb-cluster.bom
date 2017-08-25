@@ -325,7 +325,7 @@ brooklyn.catalog:
           brooklyn.config:
             enricher.aggregating.fromMembers: true
             enricher.transformation.untyped: min
-            enricher.sourceSensor: "cluster.membership"
+            enricher.sourceSensor: "cluster.membership.size"
             enricher.targetSensor: "cluster.minPartitionSize"
         - type: org.apache.brooklyn.enricher.stock.Aggregator
           brooklyn.config:

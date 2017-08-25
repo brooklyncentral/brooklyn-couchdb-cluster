@@ -96,6 +96,7 @@ brooklyn.catalog:
           username: $brooklyn:config("couchdb.username")
           password: $brooklyn:config("couchdb.password")
           preemptiveBasicAuth: true
+          suppressDuplicates: true
           jsonPath: 
           uri:
             $brooklyn:formatString:

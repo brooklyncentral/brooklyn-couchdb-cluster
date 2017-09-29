@@ -18,7 +18,7 @@
 #
 brooklyn.catalog:
   items:
-  - https://raw.githubusercontent.com/brooklyncentral/brooklyn-couchdb-cluster/master/catalog/couchdb/couchdb-cluster.bom
+  - classpath://couchdb/couchdb-cluster.bom
   - id: couchdb-cluster-template
     name: "CouchDB Cluster"
     version: 1.0.4-SNAPSHOT # BROOKLYN_COUCHDB_CLUSTER_VERSION

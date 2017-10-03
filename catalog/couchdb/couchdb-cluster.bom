@@ -155,7 +155,7 @@ brooklyn.catalog:
       name: "CouchDB setup coordination node"
       brooklyn.config:
         download.url:
-        install.latch: $brooklyn:parent().parent().attributeWhenReady("service.allNodesUp")
+        latch.install: $brooklyn:parent().parent().attributeWhenReady("service.allNodesUp")
         shell.env:
           HOSTNAMES: $brooklyn:parent().parent().attributeWhenReady("cluster.hostnames")
           HOST: $brooklyn:parent().attributeWhenReady("host.subnet.address")

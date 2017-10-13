@@ -29,8 +29,9 @@ for these are published as the list sensor `members.urls` and the external as `m
 
 In order to release a new snapshot version to Sonatype:
 
-    mvn source:jar javadoc:jar deploy
-
+```bash
+mvn deploy -DdeployTo=sonatype
+```
 
 #### Official Relesae
 
@@ -38,15 +39,15 @@ In order to release a new snapshot version to Sonatype:
 
 2. Update the version running the command below (and double-check that pom.xml was correctly updated):
 
-    ```
-    GA_VERSION=1.4.0
-    ~/repos/brooklyn/brooklyn-dist/release/change-version.sh BROOKLYN_COUCHDB_CLUSTER ${GA_VERSION}-SNAPSHOT ${GA_VERSION}
-    ```
+   ```bash
+   GA_VERSION=1.4.0
+   ~/repos/brooklyn/brooklyn-dist/release/change-version.sh BROOKLYN_COUCHDB_CLUSTER ${GA_VERSION}-SNAPSHOT ${GA_VERSION}
+   ```
 
-4. Confirm it builds: `mvn clean install`
+3. Confirm it builds: `mvn clean install`
 
-5. Push release to sonatype, following the normal Sonatype process:
+4. Push release to sonatype, following the normal Sonatype process:
 
-    ```
-    mvn source:jar javadoc:jar deploy
-    ```
+   ```bash
+   mvn deploy -DdeployTo=sonatype
+   ```

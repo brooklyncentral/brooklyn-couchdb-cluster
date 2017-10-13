@@ -22,3 +22,31 @@ Import the [catalog.bom](./catalog.bom) into your Apache Brooklyn catalog and st
 
 The cluster created will replicate it's data across three nodes, each of which can be actively used. The internal addresses 
 for these are published as the list sensor `members.urls` and the external as `members.urls.public` of the cluster entity.
+
+### [For contributors] Release Process
+
+#### Snapshot Release
+
+In order to release a new snapshot version to Sonatype:
+
+    mvn source:jar javadoc:jar deploy
+
+
+#### Official Relesae
+
+1. Create a new branch, e.g. `release/1.0.4`, and checkout that branch
+
+2. Update the version running the command below (and double-check that pom.xml was correctly updated):
+
+    ```
+    GA_VERSION=1.4.0
+    ~/repos/brooklyn/brooklyn-dist/release/change-version.sh BROOKLYN_COUCHDB_CLUSTER ${GA_VERSION}-SNAPSHOT ${GA_VERSION}
+    ```
+
+4. Confirm it builds: `mvn clean install`
+
+5. Push release to sonatype, following the normal Sonatype process:
+
+    ```
+    mvn source:jar javadoc:jar deploy
+    ```

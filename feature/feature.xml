@@ -8,5 +8,8 @@
         <configfile finalname="${karaf.home}/catalog/${project.artifactId}-${project.version}.bom" override="true">
             mvn:${project.groupId}/${project.artifactId}/${project.version}/bom/couchdb-cluster
         </configfile>
+        <configfile finalname="${karaf.home}/catalog/${project.artifactId}-template-${project.version}.bom" override="true">
+            mvn:${project.groupId}/${project.artifactId}/${project.version}/bom/couchdb-cluster-template
+        </configfile>
     </feature>
 </features>

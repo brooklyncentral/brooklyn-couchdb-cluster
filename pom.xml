@@ -9,7 +9,13 @@
     <version>1.0.5-SNAPSHOT</version><!--BROOKLYN_COUCHDB_CLUSTER_VERSION-->
     <packaging>bundle</packaging>
 
-    <name>Brooklyn CouchDB Cluster Entities</name>
+    <parent>
+        <groupId>io.brooklyn</groupId>
+        <artifactId>brooklyncentral-parent</artifactId>
+        <version>1.0.1</version>
+    </parent>
+
+    <name>Brooklyn :: CouchDB Cluster Entities</name>
     <description>
         Brooklyn entities for a CouchDB cluster.
     </description>
@@ -38,8 +44,8 @@
     <!-- For the full list of developers, see contributors to https://github.com/brooklyncentral/brooklyn-couchdb-cluster -->
     <developers>
         <developer>
-            <name>Thomas Bouron</name>
-            <organizationUrl>https://github.com/tbouron</organizationUrl>
+            <name>Cloudsoft</name>
+            <organizationUrl>https://github.com/cloudsoft</organizationUrl>
         </developer>
     </developers>
 
@@ -143,46 +149,4 @@
             </plugin>
         </plugins>
     </build>
-
-    <profiles>
-        <profile>
-            <id>sonatype-nexus-repo</id>
-            <activation>
-                <property>
-                    <name>deployTo</name>
-                    <value>sonatype</value>
-                </property>
-            </activation>
-            <distributionManagement>
-                <repository>
-                    <id>sonatype-nexus-staging</id>
-                    <name>Nexus Release Repository</name>
-                    <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
-                </repository>
-                <snapshotRepository>
-                    <id>sonatype-nexus-snapshots</id>
-                    <name>Sonatype Nexus Snapshots</name>
-                    <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
-                </snapshotRepository>
-            </distributionManagement>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-gpg-plugin</artifactId>
-                        <version>1.6</version>
-                        <executions>
-                            <execution>
-                                <id>sign-artifacts</id>
-                                <phase>verify</phase>
-                                <goals>
-                                    <goal>sign</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-    </profiles>
 </project>

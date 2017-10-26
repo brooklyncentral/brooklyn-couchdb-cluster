@@ -17,7 +17,7 @@
 # under the License.
 #
 brooklyn.catalog:
-  version: 1.0.5-SNAPSHOT # BROOKLYN_COUCHDB_CLUSTER_VERSION
+  version: 1.0.6-SNAPSHOT # BROOKLYN_COUCHDB_CLUSTER_VERSION
   name: CouchDB Cluster
   description: A CouchDB cluster blueprint
   license: Apache-2.0

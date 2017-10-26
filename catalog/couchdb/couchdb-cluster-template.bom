@@ -20,7 +20,7 @@ brooklyn.catalog:
   items:
   - id: couchdb-cluster-template
     name: "CouchDB Cluster"
-    version: 1.0.5-SNAPSHOT # BROOKLYN_COUCHDB_CLUSTER_VERSION
+    version: 1.0.6-SNAPSHOT # BROOKLYN_COUCHDB_CLUSTER_VERSION
     description: A CouchDB cluster blueprint
     itemType: template
     iconUrl: https://twitter.com/couchdb/profile_image?size=original

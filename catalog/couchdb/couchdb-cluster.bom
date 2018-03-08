@@ -53,7 +53,7 @@ brooklyn.catalog:
           RUN_DIR: $brooklyn:attributeWhenReady("run.dir")
           COOKIE: $brooklyn:config("couchdb.cookie")
           COOKIE_DEFAULT: $brooklyn:config("couchdb.cookie.default")
-        install.version: 2.0.0
+        install.version: 2.1.1
         post.customize.command: |
           # check there's a cookie specified
           if [ -z ${COOKIE} ]; then
@@ -61,7 +61,7 @@ brooklyn.catalog:
           fi
 
           # replace the node name in the settings
-          sudo sed -i "s/couchdb@localhost/couchdb@${HOST}/g" ${EXPANDED_INSTALL_DIR}/rel/couchdb/etc/vm.args
+          sudo sed -i "s/couchdb@127.0.0.1/couchdb@${HOST}/g" ${EXPANDED_INSTALL_DIR}/rel/couchdb/etc/vm.args
           # Set the security coookie
           sudo sed -i "s/-setcookie.*/-setcookie ${COOKIE}/" ${EXPANDED_INSTALL_DIR}/rel/couchdb/etc/vm.args
 

@@ -17,5 +17,7 @@
 # under the License.
 #
 brooklyn.catalog:
+  bundle: io.brooklyn.couchdb-cluster.brooklyn-couchdb-cluster
+  version: 1.0.7-SNAPSHOT # BROOKLYN_COUCHDB_CLUSTER_VERSION
   items:
   - classpath://couchdb/couchdb-cluster.bom

@@ -34,6 +34,7 @@ brooklyn.catalog:
         brooklyn.config:
           couchdb.username: admin
           couchdb.password: password
+          couchdb.nodes: 1
       - type: test-case
         name: CouchDB Cluster Tests
         brooklyn.config:
@@ -42,25 +43,3 @@ brooklyn.catalog:
         brooklyn.children:
         - type: assert-up-and-running-initial
           name: "1. Cluster up and running"
-        - type: test-http-body
-          name: "2. Create record"
-          brooklyn.config:
-            url:
-              $brooklyn:formatString:
-              - "http://admin:password@%s:%s/test-database"
-              - $brooklyn:component("couchdb-cluster-node").attributeWhenReady("host.address")
-              - $brooklyn:component("couchdb-cluster-node").attributeWhenReady("http.port")
-            method: PUT
-            assert:
-            - contains: ok
-        - type: loop-test-case
-          name: "3. Read record on all nodes"
-          target: $brooklyn:entity("couchdb-cluster")
-          testSpec:
-            $brooklyn:entitySpec:
-              type: test-http-status-200
-              url:
-                $brooklyn:formatString:
-                - "http://admin:password@%s:%s/test-database"
-                - $brooklyn:component("couchdb-cluster-node").attributeWhenReady("host.address")
-                - $brooklyn:component("couchdb-cluster-node").attributeWhenReady("http.port")
